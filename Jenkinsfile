@@ -1,10 +1,6 @@
 pipeline {
     agent any
     
-tools {
-        nodejs 'node18'
-    }
-    
     environment {
         DOCKER_IMAGE = "rajeshtutta123/ajio_project"
     }
