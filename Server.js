@@ -8,98 +8,77 @@ const app = express();
 app.use(cors());
 
 /* ---------- Serve Frontend ---------- */
-app.use(express.static(path.join(__dirname, "frontend")));
+app.use(express.static("frontend"));
 
 app.get("/", (req, res) => {
-    res.sendFile(path.join(__dirname, "frontend", "index.html"));
+    res.sendFile(path.join(__dirname,"frontend","index.html"));
 });
 
-/* ---------- Multer Storage ---------- */
+/* ---------- Multer ---------- */
 const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, "/tmp/my-uploads");
-    },
-    filename: function (req, file, cb) {
-        cb(null, `${Date.now()}_${file.originalname}`);
-    }
+  destination: function (req, file, cb) {
+    cb(null, "/tmp")
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now()+"_"+file.originalname)
+  }
 });
 
 const upload = multer({ storage: storage });
 
-/* ---------- MongoDB Connection ---------- */
-let connectToMDB = async () => {
-    try {
-        await mongoose.connect("mongodb+srv://gangasri2523:Gangasri@cluster0.6qht0xy.mongodb.net/Ajio?retryWrites=true&w=majority");
-        console.log("Successfully connected to MongoDB");
-    } catch (error) {
-        console.log("Unable to connect to MongoDB");
-    }
-};
+/* ---------- MongoDB ---------- */
 
-/* ---------- User Schema ---------- */
-let userSchema = new mongoose.Schema({
-    name: String,
-    email: String,
-    password: String,
+mongoose.connect("mongodb+srv://gangasri2523:Gangasri@cluster0.6qht0xy.mongodb.net/Ajio")
+.then(()=>console.log("MongoDB connected"))
+.catch(()=>console.log("MongoDB connection failed"))
+
+/* ---------- Schema ---------- */
+
+const userSchema = new mongoose.Schema({
+    name:String,
+    email:String,
+    password:String
 });
 
-let userClass = new mongoose.model("App", userSchema);
+const User = mongoose.model("App",userSchema);
 
-/* ---------- Signup API ---------- */
-app.post("/signup", upload.none(), async (req, res) => {
+/* ---------- Signup ---------- */
 
-    let userArr = await userClass.find().and({ email: req.body.email });
+app.post("/signup",upload.none(),async(req,res)=>{
 
-    if (userArr.length > 0) {
-        res.json({ status: "failure", msg: "user already exists" });
-    } else {
-        try {
+let user = await User.findOne({email:req.body.email});
 
-            let userObj = new userClass({
-                name: req.body.name,
-                email: req.body.email,
-                password: req.body.password,
-            });
+if(user){
+res.json({status:"failure",msg:"User already exists"})
+}else{
 
-            await userClass.insertMany([userObj]);
+let newUser = new User(req.body);
+await newUser.save();
 
-            res.json({ status: "success", msg: "successfully created account" });
+res.json({status:"success",msg:"Account created"})
 
-        } catch (error) {
-            res.json({ status: "fail", msg: "unable to create user" });
-            console.log(error);
-        }
-    }
+}
+
 });
 
-/* ---------- Login API ---------- */
-app.post("/login", upload.none(), async (req, res) => {
+/* ---------- Login ---------- */
 
-    let fetchedData = await userClass.find().and({ email: req.body.email });
+app.post("/login",upload.none(),async(req,res)=>{
 
-    if (fetchedData.length > 0) {
+let user = await User.findOne({email:req.body.email});
 
-        if (fetchedData[0].password == req.body.password) {
+if(!user){
+res.json({status:"failure",msg:"User not found"})
+}else if(user.password!==req.body.password){
+res.json({status:"failure",msg:"Invalid password"})
+}else{
+res.json({status:"success",msg:{name:user.name,email:user.email}})
+}
 
-            let dataToSend = {
-                name: fetchedData[0].name,
-                email: fetchedData[0].email,
-            };
-
-            res.json({ status: "success", msg: dataToSend });
-
-        } else {
-            res.json({ status: "failure", msg: "Invalid password" });
-        }
-
-    } else {
-        res.json({ status: "failure", msg: "User does not exist" });
-    }
 });
 
-/* ---------- Start Server ---------- */
-app.listen(1435, () => {
-    console.log("Server running on port 1435");
-});
+/* ---------- Server ---------- */
 
-connectToMDB();
+app.listen(1435,()=>{
+console.log("Server running on port 1435")
+});
