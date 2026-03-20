@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>AJIO Login</title>
+
+<style>
+body{
+    font-family: Arial;
+    background:#f4f4f4;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+}
+
+.container{
+    background:white;
+    padding:30px;
+    width:300px;
+    border-radius:10px;
+    box-shadow:0 0 10px rgba(0,0,0,0.2);
+}
+
+input{
+    width:100%;
+    padding:10px;
+    margin:10px 0;
+}
+
+button{
+    width:100%;
+    padding:10px;
+    background:black;
+    color:white;
+    border:none;
+}
+
+h2{
+    text-align:center;
+}
+
+#msg{
+    color:red;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>AJIO Login</h2>
+
+<input id="email" placeholder="Email">
+<input id="password" type="password" placeholder="Password">
+
+<button onclick="login()">Login</button>
+
+<hr>
+
+<h2>Signup</h2>
+
+<input id="name" placeholder="Name">
+<input id="semail" placeholder="Email">
+<input id="spassword" type="password" placeholder="Password">
+
+<button onclick="signup()">Signup</button>
+
+<p id="msg"></p>
+
+</div>
+
+<script>
+
+const API = window.location.origin;
+
+function signup(){
+
+let formData = new FormData();
+
+formData.append("name",document.getElementById("name").value);
+formData.append("email",document.getElementById("semail").value);
+formData.append("password",document.getElementById("spassword").value);
+
+fetch(API + "/signup",{
+method:"POST",
+body:formData
+})
+.then(res=>res.json())
+.then(data=>{
+document.getElementById("msg").innerText=data.msg;
+});
+
+}
+
+function login(){
+
+let formData = new FormData();
+
+formData.append("email",document.getElementById("email").value);
+formData.append("password",document.getElementById("password").value);
+
+fetch(API + "/login",{
+method:"POST",
+body:formData
+})
+.then(res=>res.json())
+.then(data=>{
+if(data.status=="success"){
+document.getElementById("msg").innerText="Welcome "+data.msg.name;
+}else{
+document.getElementById("msg").innerText=data.msg;
+}
+});
+
+}
+
+</script>
+
+</body>
+</html>
