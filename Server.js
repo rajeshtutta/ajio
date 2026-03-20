@@ -1,80 +1,104 @@
-const express = require("express");
-const mongoose = require("mongoose");
-const cors = require("cors");
-const multer = require("multer");
-const path = require("path");
+const  express = require("express");
+const  mongoose = require("mongoose");
+const  cors = require("cors");
+const multer = require('multer');
+
 
 const app = express();
 app.use(cors());
 
-/* ---------- FRONTEND ---------- */
-app.use(express.static(path.join(__dirname,"frontend")));
-
-app.get("/",(req,res)=>{
-res.sendFile(path.join(__dirname,"frontend","index.html"));
-});
-
-/* ---------- MULTER ---------- */
 const storage = multer.diskStorage({
-destination:(req,file,cb)=>{
-cb(null,"/tmp")
-},
-filename:(req,file,cb)=>{
-cb(null,Date.now()+"_"+file.originalname)
+    destination: function (req, file, cb) {
+
+      cb(null, '/tmp/my-uploads')
+    },
+    filename: function (req, file, cb) {
+    //   const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
+      cb(null, `${Date.now()}_${file.originalname}`)
+    }
+  })
+  
+  const upload = multer({ storage: storage })
+
+
+let connectToMDB = async()=>{
+    try {
+        await mongoose.connect("mongodb+srv://gangasri2523:Gangasri@cluster0.6qht0xy.mongodb.net/Ajio?retryWrites=true&w=majority");
+        console.log("sucessfully connected to MDB");   
+    } catch (error) {
+        console.log("unable to connect to MDB");   
+    }
+
+  
 }
+
+let userSchema = new mongoose.Schema({
+
+    name:String,
+    email:String,
+    password:String,
+
 });
+let userClass = new mongoose.model("App",userSchema);
 
-const upload = multer({storage:storage});
-
-/* ---------- MONGODB ---------- */
-mongoose.connect("mongodb+srv://gangasri2523:Gangasri@cluster0.6qht0xy.mongodb.net/Ajio")
-.then(()=>console.log("MongoDB connected"))
-.catch(()=>console.log("MongoDB error"));
-
-/* ---------- USER MODEL ---------- */
-const userSchema = new mongoose.Schema({
-name:String,
-email:String,
-password:String
-});
-
-const User = mongoose.model("App",userSchema);
-
-/* ---------- SIGNUP ---------- */
 app.post("/signup",upload.none(),async(req,res)=>{
 
-let user = await User.findOne({email:req.body.email});
+    let userArr = await userClass.find().and({email:req.body.email});
+       if(userArr.length>0){
+        res.json({status:"failure",msg:"user already exists"});
 
-if(user){
-res.json({status:"failure",msg:"User already exists"});
-}else{
+       }else{
+        try { 
 
-let newUser = new User(req.body);
-await newUser.save();
+            let userObj = new userClass({
+    
+            name:req.body.name,
+            email:req.body.email,
+            password:req.body.password,
+        })
+    
+            await userClass.insertMany([userObj]);
+    
+            res.json({status:'success',msg:'succesfully created an account'});
+            
+        } catch (error) {
+            res.json({status:'fail',msg:'unable to  created'});
+            console.log(error)
+        }
 
-res.json({status:"success",msg:"Account created"});
-}
+       }
 
+    
+// console.log(req.body);
 });
 
-/* ---------- LOGIN ---------- */
+
+
+
 app.post("/login",upload.none(),async(req,res)=>{
+//  console.log(req.body);
+ let fetchedData = await userClass.find().and({email:req.body.email});
+  if(fetchedData.length>0){
+    if(fetchedData[0].password == req.body.password){
+        let dataToSend = {
+            name:fetchedData[0].name,
+            email:fetchedData[0].email,
+      
+        }
+        res.json({status:"success",msg:dataToSend});   
+    }else{
+        res.json({status:"failure",msg:"Invalid password"});
+    }
 
-let user = await User.findOne({email:req.body.email});
-
-if(!user){
-res.json({status:"failure",msg:"User not found"});
-}
-else if(user.password!==req.body.password){
-res.json({status:"failure",msg:"Invalid password"});
-}
-else{
-res.json({status:"success",msg:{name:user.name,email:user.email}});
-}
-
+  }else{
+    res.json({status:"failure",msg:"user does not existx"});
+  }
 });
 
-/* ---------- SERVER ---------- */
+
 app.listen(1435,()=>{
-console.log("Server running on port 1435");
+    console.log("server is running")
 });
+
+
+connectToMDB();
